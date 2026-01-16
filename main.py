@@ -164,6 +164,10 @@ async def listen(ctx):
     # 1. Connect using the VoiceRecvClient
     try:
         vc = await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
+        # print channel info
+        log.info(f"🔗 Connected to {ctx.author.voice.channel} for listening.")
+        # print channel id
+        log.debug(f"Channel ID: {ctx.author.voice.channel.id}")
     except Exception as e:
         log.error(f"Connection failed: {e}")
         return await ctx.send("Could not connect to voice.")
