@@ -152,7 +152,7 @@ class DiscordIntercom:
             asyncio.run(self.cleanup())
 
 
-if __name__ == "__main__":
+def main():
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:
         raise ValueError("DISCORD_BOT_TOKEN environment variable is required.")
@@ -171,3 +171,7 @@ if __name__ == "__main__":
         output_path=args.output,
     )
     bot.start()
+
+
+if __name__ == "__main__":
+    main()

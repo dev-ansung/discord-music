@@ -5,7 +5,7 @@ description = "High-performance Discord voice utility using VLC and named pipes.
 authors = [{ name = "An Sung", email = "ansung@chromium.org" }]
 dependencies = ["discord-ext-voice-recv", "discord-py"]
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 [project.scripts]
 intercom = "src.discord_intercom:main"
 streamer = "src.discord_vlc:main"

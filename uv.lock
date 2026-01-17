@@ -248,7 +248,7 @@ wheels = [
 ]
 
 [[package]]
-name = "discord-music"
+name = "discord-intercom"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
