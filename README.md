@@ -1,25 +1,77 @@
 # Discord Intercom
 
-A high-performance Discord voice utility designed for Senior Engineers who need low-latency audio recording and playback. This project leverages `discord-ext-voice-recv` for full-duplex audio and uses **Named Pipes (FIFOs)** to bridge external media players like VLC with the Discord Voice Gateway.
+A high-performance Discord voice utility designed for low-latency audio recording and playback. This project leverages `discord-ext-voice-recv` for full-duplex audio and uses **Named Pipes (FIFOs)** to bridge external media players like VLC with the Discord Voice Gateway.
 
-![GitHub License](https://img.shields.io/github/license/dev-ansung/discord-music)
-![GitHub repo size](https://img.shields.io/github/repo-size/dev-ansung/discord-music)
-![Activity](https://img.shields.io/github/commit-activity/m/dev-ansung/discord-music)
+![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
+![GitHub repo size](https://img.shields.io/github/repo-size/dev-ansung/discord-music?style=flat-square)
+![Activity](https://img.shields.io/github/commit-activity/m/dev-ansung/discord-music?style=flat-square&color=white)
+![Last Commit](https://img.shields.io/github/last-commit/dev-ansung/discord-music?style=flat-square)
 
+![Python Version](https://img.shields.io/badge/python-3.12%2B-3776AB?style=flat-square&logo=python&logoColor=white)
+![Managed by uv](https://img.shields.io/badge/managed%20by-uv-DE5FE9?style=flat-square&logo=astral&logoColor=white)
+![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)
 
-![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)
-![Managed by uv](https://img.shields.io/badge/managed%20by-uv-purple)
-![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
-
-![FFmpeg](https://img.shields.io/badge/dependency-ffmpeg-orange)
-![discord.py](https://img.shields.io/badge/discord.py-v2.3.2-blue?logo=discord&logoColor=white)
-![voice-recv](https://img.shields.io/badge/ext-voice--recv-blueviolet)
+![discord.py](https://img.shields.io/badge/discord.py-v2.3.2-5865F2?style=flat-square&logo=discord&logoColor=white)
+![FFmpeg](https://img.shields.io/badge/dependency-ffmpeg-007800?style=flat-square&logo=ffmpeg&logoColor=white)
+![SoX](https://img.shields.io/badge/dependency-sox-FF4B12?style=flat-square)
 
 ## Core Features
 
 * **Real-time MP3 Encoding:** Records raw PCM from Discord and pipes it through FFmpeg to produce 192kbps MP3s on the fly.
 * **VLC Integration:** Use VLC as a high-level GUI/Media engine to stream any source (YouTube, local files, network streams) into a Discord Voice Channel.
 * **Full Duplex:** Capability to record and play audio simultaneously within the same bot session.
+
+## Architecture Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User / Spotify
+    participant K as Kernel (CoreAudio/Pipe)
+    participant M as Media Engine (SoX/VLC)
+    participant B as Discord Intercom (Python)
+    participant D as Discord Gateway
+
+    Note over U, D: Initialization Phase
+    U->>K: Direct System Audio to Virtual Device
+    B->>K: Create POSIX Named Pipe (mkfifo)
+    M->>K: Open Pipe for Writing (O_WRONLY)
+
+    Note over U, D: Asynchronous Audio Ingress
+    loop Real-time Stream
+        U->>K: Write PCM Frames
+        K->>M: Capture Buffer
+        M->>K: Write s16le PCM to Pipe
+    end
+
+    Note over U, D: Bot Synchronization & Handover
+    B->>D: Identify & Resume (WebSocket)
+    activate B
+    D-->>B: Ready Event
+    B->>K: _drain_fifo() (O_NONBLOCK)
+    K-->>B: Purge Stale Buffer (Sync to Tail)
+    B->>K: Open Pipe for Reading (FFmpeg Source)
+
+    Note over U, D: Full Duplex Signal Path
+    par Playback
+        K->>B: Stream Raw PCM
+        B->>D: Encapsulate RTP/Opus Packets
+    and Capture
+        D->>B: Receive RTP/Opus Packets
+        B->>B: voice_recv.BasicSink
+        B->>B: Subprocess Popen (FFmpeg Encoder)
+        B->>U: Flush 192kbps MP3 to Disk
+    end
+
+    Note over U, D: Termination
+    U->>B: SIGINT (KeyboardInterrupt)
+    B->>M: os.killpg (SIGTERM)
+    M-->>B: Process Exit
+    B->>K: unlink(audio.pipe)
+    B->>D: Disconnect
+    deactivate B
+```
+
 
 ## Requirements
 
