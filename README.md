@@ -1,189 +1,117 @@
-# Discord Audio Bridge
+# Discord Intercom
 
-**A high-performance, bidirectional audio interface for Discord Bots.**
+A high-performance Discord voice utility designed for Senior Engineers who need low-latency audio recording and playback. This project leverages `discord-ext-voice-recv` for full-duplex audio and uses **Named Pipes (FIFOs)** to bridge external media players like VLC with the Discord Voice Gateway.
 
-
-
-This project implements a robust **Audio Bridge** that decouples your application logic from the Discord Gateway. It exposes standard POSIX pipes (FIFOs) for input and output, allowing you to stream high-quality audio from any local source (FFmpeg, VLC, MPV) directly into a voice channel, and record voice chat in real-time.
-
-## 🚀 Key Features
-
-* **Unix-Style Interface:** treat Discord audio like a file stream (`read`/`write`).
-* **Fault Tolerant:** Implements a "Heartbeat" silence carrier to prevent Discord from dropping the connection during silence.
-* **Bidirectional:** Separate, isolated pipes for Speaking and Listening to prevent collision.
-* **Lazy Connection:** Pipes auto-heal and wait for readers/writers without crashing the bot.
-* **System Native:** Zero-copy data movement using OS-level FIFOs.
-
----
-
-## 🛠 Architecture
-
-The system operates on a **Strict Separation** model using two unidirectional named pipes:
-
-1.  **Speaker Pipe (`/tmp/discord_speaker_input.pcm`)**:
-    * **Input:** Your App / VLC / FFmpeg (Writes PCM data).
-    * **Process:** The Bot mixes this stream with infinite silence (Heartbeat).
-    * **Output:** Discord Voice Channel.
-2.  **Listener Pipe (`/tmp/discord_listener_output.pcm`)**:
-    * **Input:** Discord Voice Channel (Opus packets).
-    * **Process:** The Bot decodes packets to PCM.
-    * **Output:** Your App (Reads PCM data).
-
----
-
-## 📋 Prerequisites
-
-* **OS:** macOS or Linux (Windows is not supported due to `os.mkfifo` reliance).
-* **Python:** 3.10+ (Tested on 3.14).
-* **System Libraries:**
-    * **FFmpeg:** Required for audio mixing and transcoding.
-    * **libopus:** Required for Discord voice encoding.
-
-### macOS (Homebrew)
-```bash
-brew install ffmpeg opus
-
-```
-
-### Linux (Debian/Ubuntu)
-
-```bash
-sudo apt update && sudo apt install ffmpeg libopus-dev
-
-```
-
----
-
-## 📦 Installation
-
-This project uses `uv` for modern dependency management, but standard `pip` works as well.
-
-1. **Clone the repository:**
-```bash
-git clone [https://github.com/yourusername/discord-audio-bridge.git](https://github.com/yourusername/discord-audio-bridge.git)
-cd discord-audio-bridge
-
-```
+![GitHub License](https://img.shields.io/github/license/user/repo)
+![GitHub repo size](https://img.shields.io/github/repo-size/user/repo)
+![Activity](https://img.shields.io/github/commit-activity/m/user/repo)
 
 
-2. **Install Dependencies:**
-```bash
-# Using uv (Recommended)
-uv sync
+![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)
+![Managed by uv](https://img.shields.io/badge/managed%20by-uv-purple)
+![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
 
-# Using pip
-pip install -r requirements.txt
+![FFmpeg](https://img.shields.io/badge/dependency-ffmpeg-orange)
+![discord.py](https://img.shields.io/badge/discord.py-v2.3.2-blue?logo=discord&logoColor=white)
+![voice-recv](https://img.shields.io/badge/ext-voice--recv-blueviolet)
 
-```
+## Core Features
+
+* **Real-time MP3 Encoding:** Records raw PCM from Discord and pipes it through FFmpeg to produce 192kbps MP3s on the fly.
+* **VLC Integration:** Use VLC as a high-level GUI/Media engine to stream any source (YouTube, local files, network streams) into a Discord Voice Channel.
+* **Full Duplex:** Capability to record and play audio simultaneously within the same bot session.
+
+## Requirements
+
+### System Dependencies
+
+* **FFmpeg:** Required for audio transcoding and MP3 encoding.
+* **libopus:** Required for Discord voice encryption.
+* *macOS:* `brew install opus ffmpeg`
 
 
-3. **Configuration:**
+* **uv:** Recommended Python package and project manager.
+* **VLC:** (Optional) Required for `discord_vlc.py` streaming.
+
+### Environment Setup
+
 Create a `.env` file in the root directory:
+
 ```bash
-DISCORD_TOKEN=your_bot_token_here
+DISCORD_BOT_TOKEN=your_token_here
 ```
 
-
-
----
-
-## ⚡ Quick Start
-
-### 1. Start the Bridge
-
-Run the main entry point to initialize the bot and create the pipes.
+## Installation
 
 ```bash
-uv run src/main.py
-
+uv sync
 ```
 
-*You should see logs indicating the bot has connected and the "Heartbeat" is active.*
+## Usage
 
-### 2. Stream Audio (Speaker)
+### 1. Recording to MP3
 
-You can pipe any audio into the bridge using FFmpeg.
+Capture all audio from a specific voice channel.
 
 ```bash
-ffmpeg -re -i my_music.mp3 -f s16le -ar 48000 -ac 2 -y /tmp/discord_speaker_input.pcm
-
+source .env && uv run src/discord_intercom.py --channel-id {ID} --output recording.mp3
 ```
 
-### 3. Record Audio (Listener)
+### 2. Basic Audio Playback
 
-Read raw PCM data from the output pipe.
+Stream a local raw PCM or MP3 file directly.
 
 ```bash
-cat /tmp/discord_listener_output.pcm > recording.pcm
-# Play back with ffplay
-ffplay -f s16le -ar 48000 -ch_layout stereo recording.pcm
+source .env && uv run src/discord_intercom.py --channel-id {ID} --input music.mp3
 
 ```
 
----
+### 3. VLC-to-Discord Stream (GUI or Headless)
 
-## 🧪 Testing
-
-The project includes a comprehensive test suite to verify the pipeline without external dependencies.
+This command launches a VLC instance that pipes audio into the Discord bot. This allows you to use VLC's playlist and volume controls.
 
 ```bash
-# Test Speaker (Generates a 440Hz Sine Wave)
-uv run test_bridge.py speaker
-
-# Test Listener (Records 5 seconds of voice)
-uv run test_bridge.py listener
+source .env && uv run src/discord_vlc.py --source "https://www.youtube.com/watch?v=..." --channel-id {ID}
 
 ```
 
 ---
 
-## 🎧 Advanced Usage: VLC Integration
+## Technical Architecture: Audio Piping
 
-You can use VLC as a high-quality "DJ Console" to mix and stream local files. The included helper script generates the complex CLI commands for you.
+The system uses a **Named Pipe (FIFO)** to transfer audio between VLC and the Bot. This prevents disk I/O bottlenecks and minimizes latency.
 
-**Generate a command to play a playlist in background mode:**
+| Stage | Process | Format |
+| --- | --- | --- |
+| **Input** | VLC / FFmpeg | Source (MP3, URL, etc) |
+| **Bridge** | Named Pipe (`.pcm`) | Raw PCM (s16le, 48kHz, Stereo) |
+| **Output** | Discord Bot | Opus-encoded RTP Stream |
+
+### Manual Pipe Debugging
+
+If you need to verify the audio stream integrity outside of the bot:
+
+**Generate PCM with FFmpeg:**
 
 ```bash
-uv run vlc_helper.py --source "playlist.m3u" --mute_local --headless
+ffmpeg -i in.mp3 -f s16le -ar 48000 -ac 2 out.pcm
 
 ```
 
-**Run it directly:**
+**Monitor Pipe with ffplay:**
 
 ```bash
-# Example: Pipe system audio or file via VLC
-/Applications/VLC.app/Contents/MacOS/VLC --sout='#transcode{acodec=s16l,channels=2,samplerate=48000}:std{access=file,mux=raw,dst=/tmp/discord_speaker_input.pcm}'
+ffplay -f s16le -ar 48000 -ch_layout stereo out.pcm
 
 ```
+
+## Implementation Notes
+
+* **Opus Path:** The project defaults to the Homebrew path for `libopus.dylib` on Apple Silicon. Adjust `SimpleRecorderSpeaker` initialization if using Linux or Intel Mac.
+* **FFmpeg Buffering:** The recorder uses `stdin.flush()` to ensure real-time writing to the MP3 encoder, preventing data loss on process termination.
 
 ---
 
-## 📂 Project Structure
+### Next Step
 
-```text
-.
-├── discord_bridge/         # Main Package
-│   ├── __init__.py         # Public API Facade
-│   ├── core.py             # Bot Singleton & Connection Logic
-│   ├── infrastructure.py   # OS Pipe Management
-│   ├── components.py       # Audio Sinks & Lazy Loading
-│   └── patch.py            # Opus Fault Tolerance
-├── src/
-│   └── main.py             # Entry point example
-├── test_bridge.py          # End-to-End Test Suite
-├── vlc_helper.py           # VLC Command Generator
-└── pyproject.toml          # Dependency Config
-
-```
-
-## 🤝 Contributing
-
-1. Fork the repo.
-2. Create your feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit your changes (`git commit -m 'Add amazing feature'`).
-4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request.
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+Would you like me to add a **Troubleshooting** section covering common `libopus` load errors or FFmpeg path issues on different operating systems?
