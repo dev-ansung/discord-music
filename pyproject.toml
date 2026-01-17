@@ -7,11 +7,15 @@ dependencies = ["discord-ext-voice-recv", "discord-py"]
 readme = "README.md"
 requires-python = ">=3.12"
 [project.scripts]
-intercom = "src.discord_intercom:main"
-streamer = "src.discord_vlc:main"
+intercom = "discord_intercom:main"
+streamer = "discord_vlc:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
 
 [tool.uv]
 managed = true
+package = true
 
 [tool.ruff]
 line-length = 88
