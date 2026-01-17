@@ -2,9 +2,9 @@
 
 A high-performance Discord voice utility designed for Senior Engineers who need low-latency audio recording and playback. This project leverages `discord-ext-voice-recv` for full-duplex audio and uses **Named Pipes (FIFOs)** to bridge external media players like VLC with the Discord Voice Gateway.
 
-![GitHub License](https://img.shields.io/github/license/user/repo)
-![GitHub repo size](https://img.shields.io/github/repo-size/user/repo)
-![Activity](https://img.shields.io/github/commit-activity/m/user/repo)
+![GitHub License](https://img.shields.io/github/license/dev-ansung/discord-music)
+![GitHub repo size](https://img.shields.io/github/repo-size/dev-ansung/discord-music)
+![Activity](https://img.shields.io/github/commit-activity/m/dev-ansung/discord-music)
 
 
 ![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)
@@ -139,4 +139,4 @@ intercom --input audio.pipe --channel-id YOUR_CHANNEL_ID
 FFmpeg's `avfoundation` layer adds overhead and timing complexities that often result in buffer underruns. By using SoX to handle the raw PCM capture, you bypass the video-centric abstraction layer, ensuring audio bits are delivered with hardware-locked timing.
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](https://opensource.org/licenses/MIT). 
