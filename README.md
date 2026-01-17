@@ -105,13 +105,38 @@ ffplay -f s16le -ar 48000 -ch_layout stereo out.pcm
 
 ```
 
-## Implementation Notes
+## 🛠 FAQ
 
-* **Opus Path:** The project defaults to the Homebrew path for `libopus.dylib` on Apple Silicon. Adjust `SimpleRecorderSpeaker` initialization if using Linux or Intel Mac.
-* **FFmpeg Buffering:** The recorder uses `stdin.flush()` to ensure real-time writing to the MP3 encoder, preventing data loss on process termination.
+### What if I don't want to play music with VLC?
 
----
+You can capture and stream audio from any application (e.g., Chrome, Spotify) using **SoX** and **BlackHole**.
 
-### Next Step
+While **FFmpeg** is the standard for video, its macOS `avfoundation` driver frequently suffers from clock drift, leading to the "mess of crackles" or stuttering often reported on Apple Silicon. **SoX** is a dedicated audio utility that hooks directly into **CoreAudio**, providing a significantly more stable, jitter-free stream.
 
-Would you like me to add a **Troubleshooting** section covering common `libopus` load errors or FFmpeg path issues on different operating systems?
+**Setup Instructions:**
+
+1. **Install Dependencies:**
+```bash
+brew install sox blackhole-2ch
+
+```
+
+
+2. **Route Audio:** In **Audio MIDI Setup**, create a **Multi-Output Device** that includes **BlackHole 2ch** and your primary output (speakers/headphones). Set this as your System Output.
+3. **Run the Pipeline:**
+Use a Named Pipe (FIFO) to bridge the audio stream to the Intercom tool:
+```bash
+# Create pipe, start SoX in background, and launch Intercom
+mkfifo audio.pipe 2>/dev/null
+sox -t coreaudio "BlackHole 2ch" -t raw -r 48k -e signed-integer -b 16 -c 2 audio.pipe & 
+intercom --input audio.pipe --channel-id YOUR_CHANNEL_ID
+
+```
+
+
+
+**Why this works:**
+FFmpeg's `avfoundation` layer adds overhead and timing complexities that often result in buffer underruns. By using SoX to handle the raw PCM capture, you bypass the video-centric abstraction layer, ensuring audio bits are delivered with hardware-locked timing.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

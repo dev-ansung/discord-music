@@ -114,23 +114,52 @@ class DiscordIntercom:
             return
 
         log.info(f"Playing: {self.input_path}")
-        ffmpeg_options = None
-        if self.input_path.lower().endswith(".mp3"):
-            pass
-        elif self.input_path.lower().endswith(".wav"):
-            pass
-        else:
-            if not self.input_path.lower().endswith(".pcm"):
-                log.warning("Unknown input format. Defaulting to raw PCM assumptions.")
-            ffmpeg_options = "-f s16le -ar 48000 -ac 2"
-        source = discord.FFmpegPCMAudio(
-            self.input_path,
-            before_options=ffmpeg_options,
-        )
-        voice_client.play(source)
+        retry_attempts = 10
+        for attempt in range(retry_attempts):
+            try:
+                ffmpeg_options = None
+                if self.input_path.lower().endswith((".mp3", ".wav")):
+                    pass
+                else:
+                    if not self.input_path.lower().endswith(".pcm"):
+                        log.warning(
+                            "Unknown input format. Defaulting to raw PCM assumptions."
+                        )
+                    ffmpeg_options = "-f s16le -ar 48000 -ac 2"
+                source = discord.FFmpegPCMAudio(
+                    self.input_path,
+                    before_options=ffmpeg_options,
+                )
+                voice_client.play(source)
 
-        while voice_client.is_playing():
-            await asyncio.sleep(1)
+                while voice_client.is_playing():
+                    await asyncio.sleep(1)
+            except Exception as e:
+                log.error(f"Playback error on attempt {attempt + 1}: {e}")
+                await asyncio.sleep(1)
+
+    def _drain_fifo(self):
+        """Reads and discards all data currently in the pipe buffer."""
+        log.debug("Draining pipe to sync with tail...")
+        if not self.input_path:
+            return
+        try:
+            # Open in non-blocking mode so we don't hang if the pipe is empty
+            fd = os.open(self.input_path, os.O_RDONLY | os.O_NONBLOCK)
+            try:
+                total_drained = 0
+                while True:
+                    # Read in 64KB chunks (standard pipe capacity)
+                    data = os.read(fd, 65536)
+                    if not data:
+                        break
+                    total_drained += len(data)
+                log.debug(f"Drained {total_drained} bytes from pipe.")
+            finally:
+                os.close(fd)
+        except (OSError, BlockingIOError):
+            # This occurs if the pipe is already empty
+            log.debug("Pipe was already empty.")
 
     async def cleanup(self):
         """Gracefully closes connections and encoding processes."""
