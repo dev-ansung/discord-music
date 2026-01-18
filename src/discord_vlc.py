@@ -137,7 +137,7 @@ class DiscordVlcStreamer:
             os.unlink(self.vlc_config.pipe)
 
 
-if __name__ == "__main__":
+def main(VlcConfig, DiscordVlcStreamer):
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:
         print("Error: DISCORD_BOT_TOKEN environment variable is required.")
@@ -183,3 +183,7 @@ if __name__ == "__main__":
 
     streamer = DiscordVlcStreamer(token, args.channel_id, vlc_config, args.vlc_bin)
     streamer.run()
+
+
+if __name__ == "__main__":
+    main(VlcConfig, DiscordVlcStreamer)
